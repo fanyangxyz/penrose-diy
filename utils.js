@@ -101,7 +101,7 @@ function findRhomb(intersection) {
      console.log(angle_between_point_01_line_2, angle_between_point_12_line_1);
   }
 
-  rhombPoints.push({points: points, intersection: intersection, final_points: []});
+  rhombPoints.push({points: points, intersection: intersection});
 }
 
 function drawGrid() {
@@ -180,8 +180,7 @@ function drawRhomb() {
   stroke(0);
   strokeWeight(1);  
   for (let i = 0; i < rhombPoints.length; i ++) {
-    // const points = rhombPoints[i].points;
-    const points = rhombPoints[i].final_points;
+    const points = rhombPoints[i].points;
     beginShape();
     for (let i = 0; i < points.length; i++) {
       vertex(points[i][0], points[i][1]);
@@ -203,125 +202,4 @@ function isPointInPolygon(x, y, polygon) {
     if (intersect) inside = !inside;
   }
   return inside;
-}
-
-function lineSegmentDistance(x11, y11, x12, y12, x21, y21, x22, y22) {
-  // Helper function to calculate dot product
-  function dot(v1x, v1y, v2x, v2y) {
-    return v1x * v2x + v1y * v2y;
-  }
-  
-  // Helper function to calculate squared length of a vector
-  function lengthSq(x, y) {
-    return x * x + y * y;
-  }
-  
-  // Helper function to calculate point-to-line-segment distance
-  function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
-    const lenSq = lengthSq(x2 - x1, y2 - y1);
-    
-    if (lenSq === 0) {
-      // Line segment is actually a point
-      return sqrt(lengthSq(px - x1, py - y1));
-    }
-    
-    // Calculate projection of point onto line segment
-    let t = dot(px - x1, py - y1, x2 - x1, y2 - y1) / lenSq;
-    t = constrain(t, 0, 1);
-    
-    // Calculate closest point on segment
-    const projX = x1 + t * (x2 - x1);
-    const projY = y1 + t * (y2 - y1);
-    
-    // Return distance to closest point
-    return sqrt(lengthSq(px - projX, py - projY));
-  }
-  
-  // Check if segments intersect
-  function segmentsIntersect(x11, y11, x12, y12, x21, y21, x22, y22) {
-    // Calculate line directions
-    const dx1 = x12 - x11;
-    const dy1 = y12 - y11;
-    const dx2 = x22 - x21;
-    const dy2 = y22 - y21;
-    
-    // Calculate determinant
-    const det = dx1 * dy2 - dy1 * dx2;
-    
-    if (det === 0) {
-      // Lines are parallel
-      return false;
-    }
-    
-    // Calculate intersection parameters
-    const s = (dx1 * (y21 - y11) + dy1 * (x11 - x21)) / det;
-    const t = (dx2 * (y11 - y21) + dy2 * (x21 - x11)) / -det;
-    
-    // Check if intersection point lies within both segments
-    return s >= 0 && s <= 1 && t >= 0 && t <= 1;
-  }
-  
-  // If segments intersect, distance is 0
-  if (segmentsIntersect(x11, y11, x12, y12, x21, y21, x22, y22)) {
-    return 0;
-  }
-  
-  // Otherwise, return minimum of point-to-segment distances
-  return min(
-    pointToSegmentDistance(x11, y11, x21, y21, x22, y22),
-    pointToSegmentDistance(x12, y12, x21, y21, x22, y22),
-    pointToSegmentDistance(x21, y21, x11, y11, x12, y12),
-    pointToSegmentDistance(x22, y22, x11, y11, x12, y12)
-  );
-}
-
-function areVectorsParallel(v1, v2) {
-  // Two vectors are parallel if one is a scalar multiple of the other
-  // We can check this by comparing their cross product to zero
-  // For 2D vectors, we only need to check the z component of the cross product
-  
-  // First normalize the vectors to avoid floating point precision issues
-  let v1Normalized = p5.Vector.normalize(v1);
-  let v2Normalized = p5.Vector.normalize(v2);
-  
-  // Calculate cross product z component
-  let crossZ = v1Normalized.x * v2Normalized.y - v1Normalized.y * v2Normalized.x;
-  
-  const angleBetween = p5.Vector.angleBetween(v1, v2);
-  const isOpposite = abs(angleBetween) > PI - 0.0001;
-
-  // Due to floating point arithmetic, we check if the cross product
-  // is very close to zero rather than exactly zero
-  const EPSILON = 0.000001;
-  return (Math.abs(crossZ) < EPSILON) && isOpposite;
-}
-
-function calculateShiftVector(x11, y11, x12, y12, x21, y21, x22, y22) {
-  // Calculate direction vectors
-  const dir1 = {
-    x: x12 - x11,
-    y: y12 - y11
-  };
-  const dir2 = {
-    x: x22 - x21,
-    y: y22 - y21
-  };
-  
-  // Calculate midpoints
-  const mid1 = {
-    x: (x11 + x12) / 2,
-    y: (y11 + y12) / 2
-  };
-  const mid2 = {
-    x: (x21 + x22) / 2,
-    y: (y21 + y22) / 2
-  };
-  
-  // Calculate shift vector (from line1 to line2)
-  const shiftVector = {
-    x: mid2.x - mid1.x,
-    y: mid2.y - mid1.y
-  };
-  
-  return shiftVector;
 }
