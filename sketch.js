@@ -1,10 +1,10 @@
 // Constants for the pentagrid
 const PHI = (1 + Math.sqrt(5)) / 2; // Golden ratio
 const GRID_SIZE = 1200;
-const NUM_LINES = 1; // Number of lines per grid family
-const SPACING = 400; // Spacing between parallel lines
+const NUM_LINES = 2; // Number of lines per grid family
+const SPACING = 200; // Spacing between parallel lines
 const SCALE = 55;
-let GAMMAS;
+let GAMMAS15i
 const colors = [
     [255, 0, 0],    // Red
     [0, 255, 0],    // Green
@@ -38,6 +38,72 @@ function setup() {
       findRhomb(intersection);
     }
     console.log('total number of rhombs', rhombPoints.length);
+    moveRhombs();
+  }
+
+function moveRhombs() {
+  let queue = [];
+  let visited = new Set();
+  const index = 0;
+  rhombPoints[index].final_points.push([rhombPoints[index].points[0][0], rhombPoints[index].points[0][1]]);
+  rhombPoints[index].final_points.push([rhombPoints[index].points[1][0], rhombPoints[index].points[1][1]]);
+  rhombPoints[index].final_points.push([rhombPoints[index].points[2][0], rhombPoints[index].points[2][1]]);
+  rhombPoints[index].final_points.push([rhombPoints[index].points[3][0], rhombPoints[index].points[3][1]]);
+  queue.push(rhombPoints[index]);
+  visited.add(index);
+  while (queue.length > 0) {
+    let rhomb = queue.shift();
+    let min_distance = Infinity;
+    let target_i = null;
+    let target = null;
+
+    for (let i = 0; i < rhombPoints.length; i++) {
+      if (rhomb == rhombPoints[i]) continue;
+      if (visited.has(i)) continue;
+      if (rhombPoints[i].intersection.line1.family == rhomb.intersection.line1.family || rhombPoints[i].intersection.line2.family == rhomb.intersection.line2.family || rhombPoints[i].intersection.line1.family == rhomb.intersection.line2.family || rhombPoints[i].intersection.line2.family == rhomb.intersection.line1.family) {
+        const distance = dist(rhomb.intersection.x, rhomb.intersection.y, rhombPoints[i].intersection.x, rhombPoints[i].intersection.y);
+        if (distance < min_distance) {
+          min_distance = distance;
+          target_i = i;
+          target = rhombPoints[i];
+        }
+      }
+    }
+    if (target == null) break;
+    
+    let move_vector = null;
+    let min_segments_distance = Infinity;
+    for (let m = 0; m < rhomb.points.length; m++) {
+      for (let n = 0; n < target.points.length; n++) {
+        const side_m = createVector(rhomb.points[m][0] - rhomb.points[(m + 1) % 4][0], rhomb.points[m][1] - rhomb.points[(m + 1) % 4][1]);
+        const side_n = createVector(target.points[n][0] - target.points[(n + 1) % 4][0], target.points[n][1] - target.points[(n + 1) % 4][1]);
+        if (areVectorsParallel(side_m, side_n)) {
+          const segments_distance = lineSegmentDistance(rhomb.points[m][0], rhomb.points[m][1], rhomb.points[(m + 1) % 4][0], rhomb.points[(m + 1) % 4][1], target.points[n][0], target.points[n][1], target.points[(n + 1) % 4][0], target.points[(n + 1) % 4][1]);
+          if (segments_distance < min_segments_distance) {
+            move_vector = calculateShiftVector(rhomb.final_points[m][0], rhomb.final_points[m][1], rhomb.final_points[(m + 1) % 4][0], rhomb.final_points[(m + 1) % 4][1], target.points[n][0], target.points[n][1], target.points[(n + 1) % 4][0], target.points[(n + 1) % 4][1]);
+            min_segments_distance = segments_distance;
+          }
+        }
+      }
+    }
+    
+    if (visited.size == 10) {
+      console.log(move_vector.x, move_vector.y);
+      // move_vector.x = 0;
+      // move_vector.y = 0;
+    }
+    target.final_points.push([target.points[0][0] -  move_vector.x,  target.points[0][1] - move_vector.y]);
+    target.final_points.push([target.points[1][0] -  move_vector.x,  target.points[1][1] - move_vector.y]);
+    target.final_points.push([target.points[2][0] -  move_vector.x,  target.points[2][1] - move_vector.y]);
+    target.final_points.push([target.points[3][0] -  move_vector.x,  target.points[3][1] - move_vector.y]);
+
+    queue.push(target);
+    visited.add(target_i);
+
+    if (visited.size == 11) {
+      break;
+    }
+  }
 }
 
 function draw() {
