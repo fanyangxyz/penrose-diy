@@ -53,7 +53,8 @@ let alignmentQueue = [];
 let isAligning = false;
 let currentlyAligning = null; // Index of rhombus being aligned
 let currentOffset = null; // Offset to visualize
-let visualizationFrames = 30; // Frames for movement visualization (higher = slower)
+let animationStartPositions = null; // Store positions at start of animation
+let visualizationFrames = 60; // Frames for movement visualization (higher = slower)
 let visualizationProgress = 0; // 0 to visualizationFrames
 
 /**
@@ -115,7 +116,7 @@ function setup() {
     // Create record button
     recordButton = createButton('Record GIF');
     recordButton.position(380, 100);
-    recordButton.mousePressed(() => saveGif('penrose-alignment', 10));
+    recordButton.mousePressed(() => saveGif('penrose-alignment', 5));
     recordButton.style('padding', '12px 24px');
     recordButton.style('font-size', '18px');
     recordButton.style('background-color', '#ff4444');
@@ -163,6 +164,16 @@ function draw() {
     // Process alignment visualization
     if (isAligning) {
         if (showTrace && currentlyAligning !== null && visualizationProgress < visualizationFrames) {
+            // Animate the rhombus movement
+            const rhomb = rhombPoints[currentlyAligning];
+            const progress = (visualizationProgress + 1) / visualizationFrames;
+
+            // Interpolate position from start to final
+            for (let i = 0; i < rhomb.points.length; i++) {
+                rhomb.points[i][0] = animationStartPositions[i][0] + currentOffset.x * progress;
+                rhomb.points[i][1] = animationStartPositions[i][1] + currentOffset.y * progress;
+            }
+
             // Increment visualization progress
             visualizationProgress++;
             if (visualizationProgress >= visualizationFrames) {
@@ -170,6 +181,7 @@ function draw() {
                 visualizationProgress = 0;
                 currentlyAligning = null;
                 currentOffset = null;
+                animationStartPositions = null;
             }
         } else {
             // Start next alignment (skip visualization if showTrace is false)
@@ -177,6 +189,7 @@ function draw() {
                 currentlyAligning = null;
                 currentOffset = null;
                 visualizationProgress = 0;
+                animationStartPositions = null;
             }
             stepAlignment();
         }
@@ -355,8 +368,15 @@ function stepAlignment() {
         if (!adjacentTile.locked) {
             // Calculate offset for visualization
             currentOffset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
-            // Apply offset immediately (will be visualized)
-            realignRhombus(adjacentTile, currentOffset);
+
+            if (showTrace) {
+                // Store starting positions for animation
+                animationStartPositions = adjacentTile.points.map(p => [p[0], p[1]]);
+                // Don't apply offset yet - will be animated in draw loop
+            } else {
+                // Apply offset immediately if not visualizing
+                realignRhombus(adjacentTile, currentOffset);
+            }
             console.log(`Aligned rhombus ${adjacentIndex} to ${startingTileIndex}`);
         } else {
             currentOffset = { x: 0, y: 0 };
@@ -385,41 +405,50 @@ function drawMovementPath() {
     const rhomb = rhombPoints[currentlyAligning];
     const progress = visualizationProgress / visualizationFrames;
 
-    // Draw arrow from original center to final center
-    const origCenterX = (rhomb.originalPoints[0][0] + rhomb.originalPoints[2][0]) / 2;
-    const origCenterY = (rhomb.originalPoints[0][1] + rhomb.originalPoints[2][1]) / 2;
-    const finalCenterX = (rhomb.points[0][0] + rhomb.points[2][0]) / 2;
-    const finalCenterY = (rhomb.points[0][1] + rhomb.points[2][1]) / 2;
+    // Calculate start and end positions
+    const startCenterX = (animationStartPositions[0][0] + animationStartPositions[2][0]) / 2;
+    const startCenterY = (animationStartPositions[0][1] + animationStartPositions[2][1]) / 2;
+    const finalCenterX = startCenterX + currentOffset.x;
+    const finalCenterY = startCenterY + currentOffset.y;
+    const currentCenterX = (rhomb.points[0][0] + rhomb.points[2][0]) / 2;
+    const currentCenterY = (rhomb.points[0][1] + rhomb.points[2][1]) / 2;
 
-    // Draw movement arrow
-    stroke(255, 0, 0, 200);
-    strokeWeight(3);
-    line(origCenterX, origCenterY, finalCenterX, finalCenterY);
+    // Draw original position with dotted contour
+    drawingContext.setLineDash([5, 5]); // Set dashed line pattern
+    fill(150, 150, 150, 50);
+    stroke(150, 150, 150, 200);
+    strokeWeight(2);
+    beginShape();
+    for (const point of animationStartPositions) {
+        vertex(point[0], point[1]);
+    }
+    endShape(CLOSE);
+    drawingContext.setLineDash([]); // Reset to solid line
+
+    // Draw movement arrow from start to final
+    stroke(200, 200, 200, 150);
+    strokeWeight(2);
+    line(startCenterX, startCenterY, finalCenterX, finalCenterY);
 
     // Draw arrowhead at final position
-    const angle = Math.atan2(finalCenterY - origCenterY, finalCenterX - origCenterX);
-    const arrowSize = 15;
-    fill(255, 0, 0, 200);
+    const angle = Math.atan2(finalCenterY - startCenterY, finalCenterX - startCenterX);
+    const arrowSize = 12;
+    fill(200, 200, 200, 150);
+    noStroke();
     push();
     translate(finalCenterX, finalCenterY);
     rotate(angle);
     triangle(0, 0, -arrowSize, -arrowSize/2, -arrowSize, arrowSize/2);
     pop();
 
-    // Highlight original position
-    fill(255, 200, 0, 100);
-    stroke(255, 150, 0, 200);
-    strokeWeight(2);
-    beginShape();
-    for (const point of rhomb.originalPoints) {
-        vertex(point[0], point[1]);
-    }
-    endShape(CLOSE);
+    // Draw trail from start to current position
+    stroke(255, 100, 0, 200);
+    strokeWeight(3);
+    line(startCenterX, startCenterY, currentCenterX, currentCenterY);
 
-    // Highlight final position with pulsing effect
-    const alpha = 100 + 100 * Math.sin(progress * Math.PI * 4);
-    fill(0, 255, 0, alpha);
-    stroke(0, 200, 0, 255);
+    // Highlight the moving rhombus
+    fill(255, 150, 0, 150);
+    stroke(255, 100, 0, 255);
     strokeWeight(3);
     beginShape();
     for (const point of rhomb.points) {
