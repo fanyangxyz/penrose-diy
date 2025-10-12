@@ -41,6 +41,10 @@ let rhombGraph = new Map();
 // Canvas center coordinates (calculated once)
 let centerX, centerY;
 
+// Alignment state
+let isAligned = false;
+let alignButton;
+
 /**
  * Initialize the Penrose tiling
  * Sets up canvas, generates grid families, finds intersections, and creates rhombi
@@ -67,13 +71,22 @@ function setup() {
     // Build adjacency graph
     buildRhombGraph();
 
-    // Align rhombuses using BFS
-    alignRhombuses();
-
     console.log(`Generated ${rhombPoints.length} rhombi from ${intersections.length} intersections`);
 
-    // Stop draw loop from running continuously
-    noLoop();
+    // Create align button
+    alignButton = createButton('Align Rhombuses');
+    alignButton.position(20, 20);
+    alignButton.mousePressed(toggleAlignment);
+    alignButton.style('padding', '15px 30px');
+    alignButton.style('font-size', '20px');
+    alignButton.style('font-weight', 'bold');
+    alignButton.style('cursor', 'pointer');
+    alignButton.style('background-color', '#4CAF50');
+    alignButton.style('color', 'white');
+    alignButton.style('border', 'none');
+    alignButton.style('border-radius', '8px');
+    alignButton.style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    alignButton.style('transition', 'all 0.3s');
 }
 
 /**
@@ -184,4 +197,23 @@ function mouseDragged() {
  */
 function mouseReleased() {
     selectedRhomb = null;
+}
+
+/**
+ * Toggle alignment of rhombuses
+ */
+function toggleAlignment() {
+    if (!isAligned) {
+        // Align the rhombuses
+        alignRhombuses();
+        isAligned = true;
+        alignButton.html('Reset to Original');
+        alignButton.style('background-color', '#f44336');
+    } else {
+        // Reset to original positions
+        resetRhombuses();
+        isAligned = false;
+        alignButton.html('Align Rhombuses');
+        alignButton.style('background-color', '#4CAF50');
+    }
 }

@@ -141,7 +141,10 @@ function findRhomb(intersection) {
         console.log(angleBetweenPoint01Line2, angleBetweenPoint12Line1);
     }
 
-    rhombPoints.push({ points, intersection, aligned: false });
+    // Save original points for reset functionality
+    const originalPoints = points.map(p => [p[0], p[1]]);
+
+    rhombPoints.push({ points, intersection, aligned: false, originalPoints });
 }
 
 /**
@@ -653,4 +656,21 @@ function alignRhombuses() {
     }
 
     console.log(`Aligned ${alignedCount} out of ${rhombPoints.length} rhombuses`);
+}
+
+/**
+ * Reset all rhombuses to their original positions
+ */
+function resetRhombuses() {
+    for (const rhomb of rhombPoints) {
+        // Restore original points
+        for (let i = 0; i < rhomb.points.length; i++) {
+            rhomb.points[i][0] = rhomb.originalPoints[i][0];
+            rhomb.points[i][1] = rhomb.originalPoints[i][1];
+        }
+        // Reset aligned flag
+        rhomb.aligned = false;
+    }
+
+    console.log('Reset all rhombuses to original positions');
 }
