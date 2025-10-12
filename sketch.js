@@ -46,6 +46,7 @@ let isAligned = false;
 let alignButton;
 let showTraceCheckbox;
 let showTrace = true;
+let recordButton;
 
 // Progressive alignment state
 let alignmentQueue = [];
@@ -110,6 +111,17 @@ function setup() {
     showTraceCheckbox.style('box-shadow', 'none');
     showTraceCheckbox.style('cursor', 'pointer');
     showTraceCheckbox.changed(updateTraceMode);
+
+    // Create record button
+    recordButton = createButton('Record GIF');
+    recordButton.position(380, 100);
+    recordButton.mousePressed(() => saveGif('penrose-alignment', 10));
+    recordButton.style('padding', '12px 24px');
+    recordButton.style('font-size', '18px');
+    recordButton.style('background-color', '#ff4444');
+    recordButton.style('color', 'white');
+    recordButton.style('border', 'none');
+    recordButton.style('border-radius', '8px');
 
 }
 
