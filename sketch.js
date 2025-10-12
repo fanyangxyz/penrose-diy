@@ -45,6 +45,10 @@ let centerX, centerY;
 let isAligned = false;
 let alignButton;
 
+// Progressive alignment state
+let alignmentQueue = [];
+let isAligning = false;
+
 /**
  * Initialize the Penrose tiling
  * Sets up canvas, generates grid families, finds intersections, and creates rhombi
@@ -123,6 +127,11 @@ function generateRhombi() {
  */
 function draw() {
     background(BACKGROUND_WHITE);
+
+    // Process one alignment step per frame if aligning
+    if (isAligning) {
+        stepAlignment();
+    }
 
     // Translate to center for all drawing operations
     push();
@@ -203,17 +212,75 @@ function mouseReleased() {
  * Toggle alignment of rhombuses
  */
 function toggleAlignment() {
-    if (!isAligned) {
-        // Align the rhombuses
-        alignRhombuses();
-        isAligned = true;
-        alignButton.html('Reset to Original');
-        alignButton.style('background-color', '#f44336');
-    } else {
+    if (!isAligned && !isAligning) {
+        // Start progressive alignment
+        startProgressiveAlignment();
+        alignButton.html('Aligning...');
+        alignButton.style('background-color', '#FF9800');
+    } else if (isAligned) {
         // Reset to original positions
         resetRhombuses();
         isAligned = false;
+        isAligning = false;
+        alignmentQueue = [];
         alignButton.html('Align Rhombuses');
         alignButton.style('background-color', '#4CAF50');
+    }
+}
+
+/**
+ * Start the progressive alignment process
+ */
+function startProgressiveAlignment() {
+    // Initialize the queue with the first rhombus
+    alignmentQueue = [0];
+    rhombPoints[0].aligned = true;
+    isAligning = true;
+    loop(); // Start the draw loop
+}
+
+/**
+ * Process one alignment step per frame
+ */
+function stepAlignment() {
+    if (alignmentQueue.length === 0) {
+        // Alignment complete
+        isAligning = false;
+        isAligned = true;
+        alignButton.html('Reset to Original');
+        alignButton.style('background-color', '#f44336');
+        console.log('Alignment complete!');
+        return;
+    }
+
+    // Get the next rhombus to process
+    const startingTileIndex = alignmentQueue.shift();
+    const startingTile = rhombPoints[startingTileIndex];
+
+    // Find the (up to 4) tiles that are adjacent to it and unaligned
+    const adjacentTileData = getUnalignedAdjacentTiles(startingTileIndex);
+
+    // Align one neighbor per step
+    if (adjacentTileData.length > 0) {
+        const data = adjacentTileData[0]; // Take only the first neighbor
+        const adjacentIndex = data.neighborIndex;
+        const sharedLine = data.sharedLine;
+        const direction = data.direction;
+        const adjacentTile = rhombPoints[adjacentIndex];
+
+        // Move it to touch this tile using the shared line information and direction
+        const offset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
+        realignRhombus(adjacentTile, offset);
+
+        // Mark it as aligned
+        adjacentTile.aligned = true;
+
+        // Add it to the queue
+        alignmentQueue.push(adjacentIndex);
+
+        // Add remaining neighbors back to the front of the queue for next frames
+        for (let i = 1; i < adjacentTileData.length; i++) {
+            alignmentQueue.unshift(startingTileIndex);
+        }
     }
 }
