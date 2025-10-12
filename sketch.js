@@ -7,9 +7,9 @@
 const PHI = (1 + Math.sqrt(5)) / 2; // Golden ratio
 
 // Grid configuration
-const GRID_SIZE = 1200;
+const GRID_SIZE = 800;
 const NUM_LINES = 1; // Number of lines per grid family
-const SPACING = 400; // Spacing between parallel lines
+const SPACING = 450; // Spacing between parallel lines
 const SCALE = 55;
 
 // Visual constants
@@ -116,7 +116,7 @@ function setup() {
     // Create record button
     recordButton = createButton('Record GIF');
     recordButton.position(380, 100);
-    recordButton.mousePressed(() => saveGif('penrose-alignment', 5));
+    recordButton.mousePressed(() => saveGif('penrose-alignment', 12));
     recordButton.style('padding', '12px 24px');
     recordButton.style('font-size', '18px');
     recordButton.style('background-color', '#ff4444');
