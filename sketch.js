@@ -44,10 +44,16 @@ let centerX, centerY;
 // Alignment state
 let isAligned = false;
 let alignButton;
+let showTraceCheckbox;
+let showTrace = true;
 
 // Progressive alignment state
 let alignmentQueue = [];
 let isAligning = false;
+let currentlyAligning = null; // Index of rhombus being aligned
+let currentOffset = null; // Offset to visualize
+let visualizationFrames = 30; // Frames for movement visualization (higher = slower)
+let visualizationProgress = 0; // 0 to visualizationFrames
 
 /**
  * Initialize the Penrose tiling
@@ -78,19 +84,33 @@ function setup() {
     console.log(`Generated ${rhombPoints.length} rhombi from ${intersections.length} intersections`);
 
     // Create align button
-    alignButton = createButton('Align Rhombuses');
-    alignButton.position(20, 20);
+    alignButton = createButton('Drag the rhombuses or automatically align them by clicking here');
+    alignButton.position(380, 20);
     alignButton.mousePressed(toggleAlignment);
     alignButton.style('padding', '15px 30px');
     alignButton.style('font-size', '20px');
     alignButton.style('font-weight', 'bold');
     alignButton.style('cursor', 'pointer');
-    alignButton.style('background-color', '#4CAF50');
-    alignButton.style('color', 'white');
+    alignButton.style('background-color', 'transparent');
+    alignButton.style('color', 'black');
     alignButton.style('border', 'none');
     alignButton.style('border-radius', '8px');
-    alignButton.style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    alignButton.style('box-shadow', 'none');
     alignButton.style('transition', 'all 0.3s');
+
+    // Create checkbox for trace visualization
+    showTraceCheckbox = createCheckbox('Show Trace (slower animation, uncheck for faster alignment)', true);
+    showTraceCheckbox.position(380, 55);
+    showTraceCheckbox.style('font-size', '18px');
+    showTraceCheckbox.style('font-weight', 'bold');
+    showTraceCheckbox.style('color', 'black');
+    showTraceCheckbox.style('background-color', 'transparent');
+    showTraceCheckbox.style('padding', '12px 16px');
+    showTraceCheckbox.style('border-radius', '8px');
+    showTraceCheckbox.style('box-shadow', 'none');
+    showTraceCheckbox.style('cursor', 'pointer');
+    showTraceCheckbox.changed(updateTraceMode);
+
 }
 
 /**
@@ -128,9 +148,26 @@ function generateRhombi() {
 function draw() {
     background(BACKGROUND_WHITE);
 
-    // Process one alignment step per frame if aligning
+    // Process alignment visualization
     if (isAligning) {
-        stepAlignment();
+        if (showTrace && currentlyAligning !== null && visualizationProgress < visualizationFrames) {
+            // Increment visualization progress
+            visualizationProgress++;
+            if (visualizationProgress >= visualizationFrames) {
+                // Visualization complete, move to next
+                visualizationProgress = 0;
+                currentlyAligning = null;
+                currentOffset = null;
+            }
+        } else {
+            // Start next alignment (skip visualization if showTrace is false)
+            if (!showTrace && currentlyAligning !== null) {
+                currentlyAligning = null;
+                currentOffset = null;
+                visualizationProgress = 0;
+            }
+            stepAlignment();
+        }
     }
 
     // Translate to center for all drawing operations
@@ -141,6 +178,7 @@ function draw() {
     drawGrid();
     drawIntersections();
     drawRhomb();
+    drawMovementPath();
 
     pop();
 }
@@ -213,6 +251,13 @@ function mouseReleased() {
 }
 
 /**
+ * Update trace visualization mode
+ */
+function updateTraceMode() {
+    showTrace = showTraceCheckbox.checked();
+}
+
+/**
  * Toggle alignment of rhombuses
  */
 function toggleAlignment() {
@@ -220,15 +265,13 @@ function toggleAlignment() {
         // Start progressive alignment
         startProgressiveAlignment();
         alignButton.html('Aligning...');
-        alignButton.style('background-color', '#FF9800');
     } else if (isAligned) {
         // Reset to original positions
         resetRhombuses();
         isAligned = false;
         isAligning = false;
         alignmentQueue = [];
-        alignButton.html('Align Rhombuses');
-        alignButton.style('background-color', '#4CAF50');
+        alignButton.html('Drag the rhombuses or automatically align them by clicking here');
     }
 }
 
@@ -256,19 +299,23 @@ function startProgressiveAlignment() {
     }
 
     isAligning = true;
+    currentlyAligning = null;
+    currentOffset = null;
+    visualizationProgress = 0;
     loop(); // Start the draw loop
 }
 
 /**
- * Process one alignment step per frame
+ * Process one alignment step
  */
 function stepAlignment() {
     if (alignmentQueue.length === 0) {
         // Alignment complete
         isAligning = false;
         isAligned = true;
+        currentlyAligning = null;
+        currentOffset = null;
         alignButton.html('Reset to Original');
-        alignButton.style('background-color', '#f44336');
         console.log('Alignment complete!');
         return;
     }
@@ -288,13 +335,19 @@ function stepAlignment() {
         const direction = data.direction;
         const adjacentTile = rhombPoints[adjacentIndex];
 
+        // Set for visualization
+        currentlyAligning = adjacentIndex;
+        visualizationProgress = 0;
+
         // Skip if this rhombus is locked (manually moved)
         if (!adjacentTile.locked) {
-            // Move it to touch this tile using the shared line information and direction
-            const offset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
-            realignRhombus(adjacentTile, offset);
+            // Calculate offset for visualization
+            currentOffset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
+            // Apply offset immediately (will be visualized)
+            realignRhombus(adjacentTile, currentOffset);
             console.log(`Aligned rhombus ${adjacentIndex} to ${startingTileIndex}`);
         } else {
+            currentOffset = { x: 0, y: 0 };
             console.log(`Skipped locked rhombus ${adjacentIndex}`);
         }
 
@@ -309,4 +362,56 @@ function stepAlignment() {
             alignmentQueue.unshift(startingTileIndex);
         }
     }
+}
+
+/**
+ * Draw the movement path from original to final position
+ */
+function drawMovementPath() {
+    if (!showTrace || currentlyAligning === null || currentOffset === null) return;
+
+    const rhomb = rhombPoints[currentlyAligning];
+    const progress = visualizationProgress / visualizationFrames;
+
+    // Draw arrow from original center to final center
+    const origCenterX = (rhomb.originalPoints[0][0] + rhomb.originalPoints[2][0]) / 2;
+    const origCenterY = (rhomb.originalPoints[0][1] + rhomb.originalPoints[2][1]) / 2;
+    const finalCenterX = (rhomb.points[0][0] + rhomb.points[2][0]) / 2;
+    const finalCenterY = (rhomb.points[0][1] + rhomb.points[2][1]) / 2;
+
+    // Draw movement arrow
+    stroke(255, 0, 0, 200);
+    strokeWeight(3);
+    line(origCenterX, origCenterY, finalCenterX, finalCenterY);
+
+    // Draw arrowhead at final position
+    const angle = Math.atan2(finalCenterY - origCenterY, finalCenterX - origCenterX);
+    const arrowSize = 15;
+    fill(255, 0, 0, 200);
+    push();
+    translate(finalCenterX, finalCenterY);
+    rotate(angle);
+    triangle(0, 0, -arrowSize, -arrowSize/2, -arrowSize, arrowSize/2);
+    pop();
+
+    // Highlight original position
+    fill(255, 200, 0, 100);
+    stroke(255, 150, 0, 200);
+    strokeWeight(2);
+    beginShape();
+    for (const point of rhomb.originalPoints) {
+        vertex(point[0], point[1]);
+    }
+    endShape(CLOSE);
+
+    // Highlight final position with pulsing effect
+    const alpha = 100 + 100 * Math.sin(progress * Math.PI * 4);
+    fill(0, 255, 0, alpha);
+    stroke(0, 200, 0, 255);
+    strokeWeight(3);
+    beginShape();
+    for (const point of rhomb.points) {
+        vertex(point[0], point[1]);
+    }
+    endShape(CLOSE);
 }
