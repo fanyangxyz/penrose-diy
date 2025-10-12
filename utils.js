@@ -144,7 +144,7 @@ function findRhomb(intersection) {
     // Save original points for reset functionality
     const originalPoints = points.map(p => [p[0], p[1]]);
 
-    rhombPoints.push({ points, intersection, aligned: false, originalPoints });
+    rhombPoints.push({ points, intersection, aligned: false, originalPoints, locked: false });
 }
 
 /**
@@ -668,8 +668,9 @@ function resetRhombuses() {
             rhomb.points[i][0] = rhomb.originalPoints[i][0];
             rhomb.points[i][1] = rhomb.originalPoints[i][1];
         }
-        // Reset aligned flag
+        // Reset aligned and locked flags
         rhomb.aligned = false;
+        rhomb.locked = false;
     }
 
     console.log('Reset all rhombuses to original positions');

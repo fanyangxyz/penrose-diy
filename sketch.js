@@ -199,6 +199,10 @@ function mouseDragged() {
         point[0] += deltaX;
         point[1] += deltaY;
     }
+
+    // Mark as locked so alignment won't move it
+    selectedRhomb.locked = true;
+    selectedRhomb.aligned = true; // Also mark as aligned to act as an anchor
 }
 
 /**
@@ -232,9 +236,25 @@ function toggleAlignment() {
  * Start the progressive alignment process
  */
 function startProgressiveAlignment() {
-    // Initialize the queue with the first rhombus
-    alignmentQueue = [0];
-    rhombPoints[0].aligned = true;
+    // Count how many rhombuses are already locked
+    const lockedCount = rhombPoints.filter(r => r.locked).length;
+    console.log(`Starting alignment with ${lockedCount} locked rhombuses`);
+
+    // If there are locked rhombuses, start from all of them
+    // Otherwise start from rhombus 0
+    if (lockedCount > 0) {
+        alignmentQueue = [];
+        for (let i = 0; i < rhombPoints.length; i++) {
+            if (rhombPoints[i].locked) {
+                alignmentQueue.push(i);
+                console.log(`Using locked rhombus ${i} as seed`);
+            }
+        }
+    } else {
+        alignmentQueue = [0];
+        rhombPoints[0].aligned = true;
+    }
+
     isAligning = true;
     loop(); // Start the draw loop
 }
@@ -268,11 +288,17 @@ function stepAlignment() {
         const direction = data.direction;
         const adjacentTile = rhombPoints[adjacentIndex];
 
-        // Move it to touch this tile using the shared line information and direction
-        const offset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
-        realignRhombus(adjacentTile, offset);
+        // Skip if this rhombus is locked (manually moved)
+        if (!adjacentTile.locked) {
+            // Move it to touch this tile using the shared line information and direction
+            const offset = calculateAlignmentOffset(startingTile, adjacentTile, sharedLine, direction);
+            realignRhombus(adjacentTile, offset);
+            console.log(`Aligned rhombus ${adjacentIndex} to ${startingTileIndex}`);
+        } else {
+            console.log(`Skipped locked rhombus ${adjacentIndex}`);
+        }
 
-        // Mark it as aligned
+        // Mark it as aligned (whether locked or not)
         adjacentTile.aligned = true;
 
         // Add it to the queue
