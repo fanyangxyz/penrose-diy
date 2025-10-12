@@ -34,6 +34,10 @@ let rhombPoints = [];
 let intersections = [];
 let selectedRhomb = null;
 
+// Graph structure for adjacency
+// Each entry maps rhomb index to array of {neighborIndex, sharedLine} objects
+let rhombGraph = new Map();
+
 // Canvas center coordinates (calculated once)
 let centerX, centerY;
 
@@ -60,7 +64,16 @@ function setup() {
     findIntersections();
     generateRhombi();
 
+    // Build adjacency graph
+    buildRhombGraph();
+
+    // Align rhombuses using BFS
+    alignRhombuses();
+
     console.log(`Generated ${rhombPoints.length} rhombi from ${intersections.length} intersections`);
+
+    // Stop draw loop from running continuously
+    noLoop();
 }
 
 /**
